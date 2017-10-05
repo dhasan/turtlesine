@@ -3,23 +3,25 @@
 #define _TURTLESINE_H_
 
 #include "ros/ros.h"
-#include "std_msgs/String.h"
+//#include "std_msgs/String.h"
 
-#include <sstream>
+//#include <sstream>
 
 class TurtleSine 
 {
 
 private:
-	
-
 	ros::NodeHandle n;
-	ros::Publisher pub;
+	ros::Publisher pubsine;
+	ros::ServiceClient clienttelep;
+	//ros::Publisher pubtelep;
 
 public:
 	static const char node_name[];
-	TurtleSine(double x, double y, double alpha);
-	void publish(double lr);
+	TurtleSine();
+
+	int initialize(double x, double y, double theta);
+	void run(double lr, double amp) const;
 
 
 	

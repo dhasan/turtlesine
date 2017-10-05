@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   std_msgs
+  message_generation
 )
 
 ## System dependencies are found with CMake's conventions
@@ -54,11 +55,12 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate services in the 'srv' folder
-# add_service_files(
-#   FILES
+#add_service_files(
+#    FILES
+#	TeleportAbsolute.srv
 #   Service1.srv
 #   Service2.srv
-# )
+#)
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -116,7 +118,8 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-# include
+  include
+  include/turtlesine
   ${catkin_INCLUDE_DIRS}
 )
 
@@ -149,6 +152,10 @@ include_directories(
 # target_link_libraries(${PROJECT_NAME}_node
 #   ${catkin_LIBRARIES}
 # )
+
+add_executable(turtlesine src/turtlesine.cpp)
+target_link_libraries(turtlesine ${catkin_LIBRARIES})
+add_dependencies(turtlesine beginner_tutorials_generate_messages_cpp)
 
 #############
 ## Install ##
