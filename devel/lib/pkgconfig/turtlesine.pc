@@ -1,0 +1,8 @@
+prefix=/work/ros/task1_ws/devel
+
+Name: turtlesine
+Description: Description of turtlesine
+Version: 0.0.0
+Cflags: 
+Libs: -L/work/ros/task1_ws/devel/lib 
+Requires: 
