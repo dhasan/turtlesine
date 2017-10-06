@@ -23,7 +23,7 @@ int TurtleSine::initialize(double x, double y, double theta)
 	telep.request.theta = theta;
 
 	/*
-		Since both nodes are starting at the same from launcher time sometimes turtlesine node starts before
+		Since both nodes are starting at the same from launcher sometimes turtlesine node starts before
 		turtlesim_node, so we need to wait until turtlesim_node appear to use teleport service
 	*/
 	while (!clienttelep.call(telep) && cnt)
@@ -85,7 +85,7 @@ int main(int argc, char **argv)
 
 	TurtleSine *ts = new TurtleSine();
 
-	if (ts->initialize(0.0, 5.8, 1.5)){
+	if (ts->initialize(0.0, 5.55, 1.5)){
 		delete ts;
 		std::cout << "Unable to teleport. Turtlesim_naode might be missing"<< std::endl;
 		exit(0);
