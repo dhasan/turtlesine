@@ -1,7 +1,17 @@
 <launch>
+    <arg name="ns" default="/task1" />
 
-    <node pkg="turtlesim" name="turtlesim" type="turtlesim_node"/>
-
-    <node pkg="turtlesine" name="turtlesine" type="turtlesine"/>
+    <remap from="$(arg ns)/turtle1" to="$(arg ns)/turtlesine"/>
+    
+    <group ns="$(arg ns)">
+        <node pkg="turtlesim" name="turtlesim" type="turtlesim_node"/>
+    
+        <node pkg="turtlesine" name="turtlesine" type="turtlesine">
+            <param name="initial_x" value="0.0" type="double" />
+            <param name="initial_y" value="5.544445" type="double" />
+            <param name="initial_theta" value="1.5" type="double" />
+        </node>
+        
+    </group>
 
 </launch>

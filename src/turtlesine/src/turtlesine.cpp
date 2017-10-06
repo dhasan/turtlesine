@@ -6,21 +6,36 @@
 
 const std::string TurtleSine::node_name = "turtlesine";
 
-TurtleSine::TurtleSine()
+TurtleSine::TurtleSine() : n("~"), pubsine(n.advertise<geometry_msgs::Twist>("cmd_vel", 1000)),
+	clienttelep(n.serviceClient<turtlesim::TeleportAbsolute>("teleport_absolute"))
 {
 
-	pubsine = n.advertise<geometry_msgs::Twist>("turtle1/cmd_vel", 1000); 
-	clienttelep = n.serviceClient<turtlesim::TeleportAbsolute>("turtle1/teleport_absolute");
+	//pubsine = n.advertise<geometry_msgs::Twist>("turtle1/cmd_vel", 1000); 
+	//clienttelep = n.serviceClient<turtlesim::TeleportAbsolute>("turtle1/teleport_absolute");
 }
-
-int TurtleSine::initialize(double x, double y, double theta)
+TurtleSine::~TurtleSine(){}
+int TurtleSine::initialize(/*double x, double y, double theta*/)
 {
 	turtlesim::TeleportAbsolute telep;
 	int cnt = 500; //retrys
+	
+	/*
+		Apparently params can't be float only (str|int|double|bool|yaml), so use temporary vars, the other option is yaml with single vector parameter...
+	*/
+	double tx,ty,ttheta;
+	n.getParam("initial_x", tx);
+	n.getParam("initial_y", ty);
+	n.getParam("initial_theta", ttheta);
 
-	telep.request.x = x;
-	telep.request.y = y;
-	telep.request.theta = theta;
+
+	telep.request.x = (float)tx;
+	telep.request.y = (float)ty;
+	telep.request.theta = (float)ttheta;
+
+	ROS_INFO("telep.request.y %f",ty);
+	//telep.request.x = ;
+	//telep.request.y = vec.at(1);
+	//telep.request.theta = vec.at(2);
 
 	/*
 		Since both nodes are starting at the same from launcher sometimes turtlesine node starts before
@@ -83,17 +98,17 @@ int main(int argc, char **argv)
 {
 	ros::init(argc, argv, TurtleSine::node_name);
 
-	TurtleSine *ts = new TurtleSine();
+	TurtleSine ts;
 
-	if (ts->initialize(0.0, 5.55, 1.5)){
-		delete ts;
+	if (ts.initialize(/*0.0, 5.55, 1.5*/)){
+		//delete ts;
 		std::cout << "Unable to teleport. Turtlesim_naode might be missing"<< std::endl;
 		exit(0);
 
 	}else{
-		ts->run(1.3, 2.0);
+		ts.run(1.3, 2.0);
 	}
 
-	delete ts;
+	//delete ts;
 	return 0;
 }

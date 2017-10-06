@@ -10,14 +10,16 @@ class TurtleSine
 
 private:
 	ros::NodeHandle n;
+
 	ros::Publisher pubsine;
 	ros::ServiceClient clienttelep;
 
 public:
 	static const std::string node_name;
 	TurtleSine();
+	~TurtleSine();
 
-	int initialize(double x, double y, double theta);
+	int initialize(/*double x, double y, double theta*/);
 	void run(double lr, double amp) const;
 
 
