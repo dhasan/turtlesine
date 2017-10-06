@@ -4,7 +4,7 @@
 #include <geometry_msgs/Twist.h>
 #include <turtlesim/TeleportAbsolute.h> 
 
-const char TurtleSine::node_name[] = "turtlesine";
+const std::string TurtleSine::node_name = "turtlesine";
 
 TurtleSine::TurtleSine()
 {
@@ -16,22 +16,37 @@ TurtleSine::TurtleSine()
 int TurtleSine::initialize(double x, double y, double theta)
 {
 	turtlesim::TeleportAbsolute telep;
+	int cnt = 500; //retrys
 
 	telep.request.x = x;
 	telep.request.y = y;
 	telep.request.theta = theta;
 
-	while (!clienttelep.call(telep))
+	/*
+		Since both nodes are starting at the same from launcher time sometimes turtlesine node starts before
+		turtlesim_node, so we need to wait until turtlesim_node appear to use teleport service
+	*/
+	while (!clienttelep.call(telep) && cnt)
 	{
-		ROS_INFO("Turtel teleporting....");
-		
+		ROS_WARN("Wait for turtlesim_node and Teleport service server..");
+		cnt--;
 	}
-	return 0;
+	if (cnt){
+		ROS_INFO("Turtle teleported.");
+		return 0;
+	}
+	else{
+		ROS_ERROR("Unable to teleport the turtle.");
+		return -1;
+	}
 	
 }
 
 void TurtleSine::run(double lr, double amp) const // lr is loop rate
 {
+	/*
+		This implementation is without feedback from pose topic, it relies on the duration on twist msgs / loop rate and velocity
+	*/
 	ros::Rate loop_rate(lr);
 	geometry_msgs::Twist twist;
 	int count = 0;
@@ -49,7 +64,6 @@ void TurtleSine::run(double lr, double amp) const // lr is loop rate
 
   		if (count & 1){
   			twist.angular.z *= -1;
-
   		}
 
   		pubsine.publish(twist);
@@ -73,10 +87,13 @@ int main(int argc, char **argv)
 
 	if (ts->initialize(0.0, 5.8, 1.5)){
 		delete ts;
-		std::cout << "Unable to teleport "<< std::endl;
+		std::cout << "Unable to teleport. Turtlesim_naode might be missing"<< std::endl;
+		exit(0);
 
 	}else{
 		ts->run(1.3, 2.0);
 	}
+
 	delete ts;
+	return 0;
 }
