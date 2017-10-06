@@ -14,12 +14,14 @@ private:
 	ros::Publisher pubsine;
 	ros::ServiceClient clienttelep;
 
+	static void timerCallback(const TurtleSine *obj,double l, double a);
+
 public:
 	static const std::string node_name;
 	TurtleSine();
 	~TurtleSine();
 
-	int initialize(/*double x, double y, double theta*/);
+	int initialize();
 	void run(double lr, double amp) const;
 
 

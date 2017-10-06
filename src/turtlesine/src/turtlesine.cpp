@@ -7,20 +7,16 @@
 const std::string TurtleSine::node_name = "turtlesine";
 
 TurtleSine::TurtleSine() : n("~"), pubsine(n.advertise<geometry_msgs::Twist>("cmd_vel", 1000)),
-	clienttelep(n.serviceClient<turtlesim::TeleportAbsolute>("teleport_absolute"))
-{
+	clienttelep(n.serviceClient<turtlesim::TeleportAbsolute>("teleport_absolute")){}
 
-	//pubsine = n.advertise<geometry_msgs::Twist>("turtle1/cmd_vel", 1000); 
-	//clienttelep = n.serviceClient<turtlesim::TeleportAbsolute>("turtle1/teleport_absolute");
-}
 TurtleSine::~TurtleSine(){}
-int TurtleSine::initialize(/*double x, double y, double theta*/)
+int TurtleSine::initialize()
 {
 	turtlesim::TeleportAbsolute telep;
 	int cnt = 500; //retrys
 	
 	/*
-		Apparently params can't be float only (str|int|double|bool|yaml), so use temporary vars, the other option is yaml with single vector parameter...
+		Apparently params can't be float, only (str|int|double|bool|yaml), so use temporary vars, the other option is yaml with single vector parameter...
 	*/
 	double tx,ty,ttheta;
 	n.getParam("initial_x", tx);
@@ -31,11 +27,6 @@ int TurtleSine::initialize(/*double x, double y, double theta*/)
 	telep.request.x = (float)tx;
 	telep.request.y = (float)ty;
 	telep.request.theta = (float)ttheta;
-
-	ROS_INFO("telep.request.y %f",ty);
-	//telep.request.x = ;
-	//telep.request.y = vec.at(1);
-	//telep.request.theta = vec.at(2);
 
 	/*
 		Since both nodes are starting at the same from launcher sometimes turtlesine node starts before
@@ -57,23 +48,47 @@ int TurtleSine::initialize(/*double x, double y, double theta*/)
 	
 }
 
-void TurtleSine::run(double lr, double amp) const // lr is loop rate
+void TurtleSine::timerCallback(const TurtleSine *obj, double l, double a)
 {
-	/*
-		This implementation is without feedback from pose topic, it relies on the duration on twist msgs / loop rate and velocity
-	*/
-	ros::Rate loop_rate(lr);
-	geometry_msgs::Twist twist;
-	int count = 0;
+	ROS_WARN("Check ptr2 %p %f %f", obj,l,a);
 	
-	twist.linear.x = amp;
+	//ros::Rate loop_rate(0.707);
+	geometry_msgs::Twist twist;
+	static int count = 0;
+	twist.linear.x = l;
 	twist.linear.y = 0;
 	twist.linear.z = 0;
 
 	twist.angular.x = 0;
 	twist.angular.y = 0;
-	twist.angular.z = amp;
+	twist.angular.z = a;
 
+	if (!(count & 1)){
+  		twist.angular.z *= -1;
+  	}
+
+  	obj->pubsine.publish(twist);
+  	//ros::spinOnce();
+  // 	loop_rate.sleep();
+	++count;
+}
+
+void TurtleSine::run(double lr, double amp) const // lr is loop rate
+{
+	/*
+		This implementation is without feedback from pose topic, it relies on the duration on twist msgs / loop rate and velocity
+	*/
+	//ros::Rate loop_rate(lr);
+	geometry_msgs::Twist twist;
+	
+	
+	
+	ROS_WARN("Chec5 ptr1 %p", this);
+
+	ros::Timer timer = n.createTimer(ros::Duration(1/1.3), boost::bind(&TurtleSine::timerCallback, const_cast<TurtleSine*>(this), 4.44, 4.44)); 
+	ros::spin();
+
+#if 0
 	while (ros::ok())
   	{
 
@@ -89,6 +104,7 @@ void TurtleSine::run(double lr, double amp) const // lr is loop rate
 
   		++count;
   	}
+#endif
 
 }
 
