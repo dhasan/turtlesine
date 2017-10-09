@@ -11,8 +11,10 @@ class TurtleSine
 private:
 	ros::NodeHandle n;
 
+
 	ros::Publisher pubsine;
 	ros::ServiceClient clienttelep;
+	ros::Timer timer;
 
 	static void timerCallback(const TurtleSine *obj,double l, double a);
 
@@ -22,7 +24,7 @@ public:
 	~TurtleSine();
 
 	int initialize();
-	void run(double lr, double amp) const;
+	//void run(double lr, double amp) const;
 
 
 	

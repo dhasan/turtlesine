@@ -7,7 +7,8 @@
 const std::string TurtleSine::node_name = "turtlesine";
 
 TurtleSine::TurtleSine() : n("~"), pubsine(n.advertise<geometry_msgs::Twist>("cmd_vel", 1000)),
-	clienttelep(n.serviceClient<turtlesim::TeleportAbsolute>("teleport_absolute")){}
+	clienttelep(n.serviceClient<turtlesim::TeleportAbsolute>("teleport_absolute")), 
+	timer(n.createTimer(ros::Duration(1/1.3), boost::bind(&TurtleSine::timerCallback, const_cast<TurtleSine*>(this), 4.44, 4.44))){}
 
 TurtleSine::~TurtleSine(){}
 int TurtleSine::initialize()
@@ -68,47 +69,9 @@ void TurtleSine::timerCallback(const TurtleSine *obj, double l, double a)
   	}
 
   	obj->pubsine.publish(twist);
-  	//ros::spinOnce();
-  // 	loop_rate.sleep();
+  
 	++count;
 }
-
-void TurtleSine::run(double lr, double amp) const // lr is loop rate
-{
-	/*
-		This implementation is without feedback from pose topic, it relies on the duration on twist msgs / loop rate and velocity
-	*/
-	//ros::Rate loop_rate(lr);
-	geometry_msgs::Twist twist;
-	
-	
-	
-	ROS_WARN("Chec5 ptr1 %p", this);
-
-	ros::Timer timer = n.createTimer(ros::Duration(1/1.3), boost::bind(&TurtleSine::timerCallback, const_cast<TurtleSine*>(this), 4.44, 4.44)); 
-	ros::spin();
-
-#if 0
-	while (ros::ok())
-  	{
-
-  		if (count & 1){
-  			twist.angular.z *= -1;
-  		}
-
-  		pubsine.publish(twist);
-  		ros::spinOnce();
-
-    	loop_rate.sleep();
-
-
-  		++count;
-  	}
-#endif
-
-}
-
-
 
 int main(int argc, char **argv)
 {
@@ -116,14 +79,15 @@ int main(int argc, char **argv)
 
 	TurtleSine ts;
 
-	if (ts.initialize(/*0.0, 5.55, 1.5*/)){
+	if (ts.initialize()){
 		//delete ts;
 		std::cout << "Unable to teleport. Turtlesim_naode might be missing"<< std::endl;
 		exit(0);
 
-	}else{
-		ts.run(1.3, 2.0);
 	}
+
+	ros::spin();
+	
 
 	//delete ts;
 	return 0;
