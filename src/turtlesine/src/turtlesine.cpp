@@ -8,9 +8,10 @@ const std::string TurtleSine::node_name = "turtlesine";
 
 TurtleSine::TurtleSine() : n("~"), pubsine(n.advertise<geometry_msgs::Twist>("cmd_vel", 1000)),
 	clienttelep(n.serviceClient<turtlesim::TeleportAbsolute>("teleport_absolute")), 
-	timer(n.createTimer(ros::Duration(1/1.3), boost::bind(&TurtleSine::timerCallback, const_cast<TurtleSine*>(this), 4.44, 4.44))){}
+	timer(n.createTimer(ros::Duration(1.0/1.3), boost::bind(&TurtleSine::timerCallback, const_cast<TurtleSine*>(this), 4.44, 4.44))),
+	lastpose(3){}
 
-TurtleSine::~TurtleSine(){}
+
 int TurtleSine::initialize()
 {
 	turtlesim::TeleportAbsolute telep;
@@ -40,6 +41,9 @@ int TurtleSine::initialize()
 	}
 	if (cnt){
 		ROS_INFO("Turtle teleported.");
+		lastpose.at(POSE_X) = telep.request.x;  //TODO: better to use response values if available
+		lastpose.at(POSE_Y) = telep.request.y;
+		lastpose.at(POSE_THETA) = telep.request.theta;
 		return 0;
 	}
 	else{
@@ -49,11 +53,11 @@ int TurtleSine::initialize()
 	
 }
 
-void TurtleSine::timerCallback(const TurtleSine *obj, double l, double a)
+void TurtleSine::timerCallback(TurtleSine *obj, double l, double a)
 {
-	ROS_WARN("Check ptr2 %p %f %f", obj,l,a);
+	//ROS_WARN("Check ptr2 %p %f %f", obj,l,a);
 	
-	//ros::Rate loop_rate(0.707);
+	
 	geometry_msgs::Twist twist;
 	static int count = 0;
 	twist.linear.x = l;
@@ -69,9 +73,35 @@ void TurtleSine::timerCallback(const TurtleSine *obj, double l, double a)
   	}
 
   	obj->pubsine.publish(twist);
+
+  	obj->poseCalculate(twist);
   
 	++count;
 }
+
+void TurtleSine::poseCalculate(const geometry_msgs::Twist &twist){
+
+	double dt = 1.0/1.3; //time discrete
+	double vx = twist.linear.x;
+	double vy = twist.linear.y; 
+	double th = twist.angular.z;
+
+	double thi = lastpose.at(POSE_THETA); //initial angle
+
+	double delta_x = (vy * sin(thi) - vx * cos(thi)) * dt;
+	double delta_y = (vy * cos(thi) + vx * sin(thi)) * dt;
+	double delta_th = th * dt;
+
+	lastpose.at(POSE_X) += (float)delta_x;
+	lastpose.at(POSE_Y) += (float)delta_y;
+	lastpose.at(POSE_THETA) += (float)delta_th;
+
+	ROS_INFO("Calculated pose x y: %f %f", lastpose.at(0), lastpose.at(1));
+
+
+}
+
+
 
 int main(int argc, char **argv)
 {
@@ -87,8 +117,6 @@ int main(int argc, char **argv)
 	}
 
 	ros::spin();
-	
 
-	//delete ts;
 	return 0;
 }
