@@ -25,7 +25,6 @@ int TurtleSine::initialize()
 	n.getParam("initial_y", ty);
 	n.getParam("initial_theta", ttheta);
 
-
 	telep.request.x = (float)tx;
 	telep.request.y = (float)ty;
 	telep.request.theta = (float)ttheta;
@@ -55,9 +54,6 @@ int TurtleSine::initialize()
 
 void TurtleSine::timerCallback(TurtleSine *obj, double l, double a)
 {
-	//ROS_WARN("Check ptr2 %p %f %f", obj,l,a);
-	
-	
 	geometry_msgs::Twist twist;
 	static int count = 0;
 	twist.linear.x = l;
@@ -81,6 +77,8 @@ void TurtleSine::timerCallback(TurtleSine *obj, double l, double a)
 
 void TurtleSine::poseCalculate(const geometry_msgs::Twist &twist){
 
+	/* Odometry formula*/
+
 	double dt = 1.0/1.3; //time discrete
 	double vx = twist.linear.x;
 	double vy = twist.linear.y; 
@@ -97,8 +95,7 @@ void TurtleSine::poseCalculate(const geometry_msgs::Twist &twist){
 	lastpose.at(POSE_THETA) += (float)delta_th;
 
 	ROS_INFO("Calculated pose x y: %f %f", lastpose.at(0), lastpose.at(1));
-
-
+	//TODO: wall hit not taken into account
 }
 
 
@@ -110,7 +107,7 @@ int main(int argc, char **argv)
 	TurtleSine ts;
 
 	if (ts.initialize()){
-		//delete ts;
+
 		std::cout << "Unable to teleport. Turtlesim_naode might be missing"<< std::endl;
 		exit(0);
 
