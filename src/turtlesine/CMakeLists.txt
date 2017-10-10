@@ -110,7 +110,7 @@ catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES turtlesine
 #  CATKIN_DEPENDS roscpp rospy std_msgs
-   CATKIN_DEPENDS message_runtime nodelet
+   CATKIN_DEPENDS message_runtime nodelet pluginlib
 #  DEPENDS system_lib
 )
 
@@ -158,7 +158,7 @@ include_directories(
 
 add_executable(turtlesine src/turtlesine.cpp)
 target_link_libraries(turtlesine ${catkin_LIBRARIES})
-add_dependencies(turtlesine beginner_tutorials_generate_messages_cpp)
+add_dependencies(turtlesine beginner_tutorials_generate_messages_cpp nodelet)
 
 #############
 ## Install ##

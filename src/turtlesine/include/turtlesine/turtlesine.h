@@ -12,6 +12,8 @@
 #define		INITIAL_X	(5.544445)
 #define		INITIAL_Y	(5.544445)
 
+#define 	RETRYS 		(10)
+
 #define 	TIME_DT 	(1.0/1.3)
 namespace task1_pkg {
 	class TurtleSine : public nodelet::Nodelet
@@ -22,11 +24,12 @@ namespace task1_pkg {
 	
 		ros::Publisher pubsine;
 		ros::ServiceClient clienttelep;
-		ros::ServiceClient swan;
+		ros::ServiceClient spawn;
 		ros::Timer timer;
 		ros::Publisher odompub;
 		
 		std::vector<float> lastpose;
+		std::string turtlename;
 
 		static void timerCallback(TurtleSine *obj,double l, double a);
 		void poseCalculate(const geometry_msgs::Twist &twist);

@@ -1,6 +1,7 @@
 
 #include "turtlesine.h"
 #include <sstream>
+#include <boost/tokenizer.hpp>
 #include <geometry_msgs/Twist.h>
 #include <turtlesim/TeleportAbsolute.h>
 #include <turtlesim/Spawn.h>
@@ -9,6 +10,11 @@
 #include <pluginlib/class_list_macros.h>
 #include "nodelet/loader.h"
 #include <turtlesim/Kill.h>
+
+#include <string>
+#include <vector>
+#include <iostream>
+#include <iomanip>
 
 
 PLUGINLIB_EXPORT_CLASS(task1_pkg::TurtleSine, nodelet::Nodelet)
@@ -23,7 +29,7 @@ namespace task1_pkg {
 	
 	TurtleSine::TurtleSine(ros::NodeHandle &n) : nh(n), pubsine(nh.advertise<geometry_msgs::Twist>("cmd_vel", 1000)),
 		clienttelep(nh.serviceClient<turtlesim::TeleportAbsolute>("teleport_absolute")), 
-		swan(nh.serviceClient<turtlesim::Spawn>("/task1/sim/spawn")),
+		spawn(nh.serviceClient<turtlesim::Spawn>("/task1/sim/spawn")),
 		timer(nh.createTimer(ros::Duration(TIME_DT), boost::bind(&TurtleSine::timerCallback, const_cast<TurtleSine*>(this), 4.44, 4.44))),
 		odompub(nh.advertise<turtlesine::Odom>("odompub", 1000)),
 		lastpose(3)
@@ -31,7 +37,7 @@ namespace task1_pkg {
 		turtlesim::TeleportAbsolute telep;
 		
 	
-		int cnt = 10; //retrys
+		int cnt = RETRYS; //retrys
 		
 		
 		/*
@@ -41,8 +47,14 @@ namespace task1_pkg {
 		nh.getParam("turtlesine/initial_x", tx);
 		nh.getParam("turtlesine/initial_y", ty);
 		nh.getParam("turtlesine/initial_theta", ttheta);
-	
-		std::cout << "NAMESPACE : " <<ros::this_node::getNamespace()<<std::endl;
+
+		std::string ns = ros::this_node::getNamespace();
+    	boost::tokenizer<boost::char_separator<char>> tokens(ns, boost::char_separator<char>("/"));
+    	std::vector<std::string> result(tokens.begin(), tokens.end());
+
+    	//TODO: empty vector check
+		turtlename = result.at(result.size() - 1);
+		std::cout << "NAMESPACE : " <<ros::this_node::getNamespace()<< " "<<turtlename<<std::endl;
 	
 		telep.request.x = tx;
 		telep.request.y = ty;
@@ -52,17 +64,27 @@ namespace task1_pkg {
 			Since both nodes are starting at the same from launcher sometimes turtlesine node starts before
 			turtlesim_node, so we need to wait until turtlesim_node appear to use teleport service
 		*/
-	
-		while (!ros::service::exists("teleport_absolute", true) && cnt)
+
+		while (!ros::service::exists("/task1/sim/spawn", true) && cnt)
 		{
 			
-			ROS_WARN("Wait for turtlesim_node and Teleport service server..");
-			ros::service::waitForService("teleport_absolute", 50);
+			ROS_WARN("Wait for turtlesim_node.");
+			ros::service::waitForService("/task1/sim/spawn", 50);
 			--cnt;
 		}
-	
 		if (cnt){
 			ROS_INFO("Turtle teleported.");
+
+			if (!ros::service::exists("teleport_absolute", true)){
+				turtlesim::Spawn spawn_turtle;
+				char turtle_name_arr[10];
+				spawn_turtle.request.x = INITIAL_X;
+				spawn_turtle.request.y = INITIAL_Y;
+				spawn_turtle.request.theta = 0.0;
+				spawn_turtle.request.name = turtlename;
+				spawn.call(spawn_turtle);
+			}
+
 			clienttelep.call(telep);
 			
 		}
@@ -143,7 +165,7 @@ namespace task1_pkg {
 		NODELET_DEBUG("Initializing nodelet...");
 		pubsine = nh.advertise<geometry_msgs::Twist>("cmd_vel", 1000);
 		clienttelep = nh.serviceClient<turtlesim::TeleportAbsolute>("teleport_absolute"); 
-		swan = nh.serviceClient<turtlesim::Spawn>("spawn"); 
+		spawn = nh.serviceClient<turtlesim::Spawn>("spawn"); 
 		timer = nh.createTimer(ros::Duration(TIME_DT), boost::bind(&TurtleSine::timerCallback, const_cast<TurtleSine*>(this), 4.44, 4.44));
 		odompub = nh.advertise<turtlesine::Odom>("odompub", 1000);
 		lastpose.resize(3);
