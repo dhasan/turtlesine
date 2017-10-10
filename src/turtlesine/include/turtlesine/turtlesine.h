@@ -5,6 +5,10 @@
 #include <geometry_msgs/Twist.h>
 #include <nodelet/nodelet.h>
 
+#include <thread>             // std::thread
+#include <mutex>              // std::mutex, std::unique_lock
+#include <condition_variable> // std::condition_variable
+
 #define		POSE_X		(0)
 #define		POSE_Y		(1)
 #define		POSE_THETA	(2)
@@ -12,7 +16,7 @@
 #define		INITIAL_X	(5.544445)
 #define		INITIAL_Y	(5.544445)
 
-#define 	RETRYS 		(10)
+#define 	RETRYS 		(50)
 
 #define 	TIME_DT 	(1.0/1.3)
 namespace task1_pkg {
@@ -31,8 +35,17 @@ namespace task1_pkg {
 		std::vector<float> lastpose;
 		std::string turtlename;
 
+		std::mutex mtx;
+		std::condition_variable cv;
+		std::thread thread;
+		
+
 		static void timerCallback(TurtleSine *obj,double l, double a);
+		static void simWait(TurtleSine *obj);
+
 		void poseCalculate(const geometry_msgs::Twist &twist);
+
+
 
 	public:
 		virtual void onInit();
