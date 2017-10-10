@@ -5,7 +5,8 @@
     <remap from="$(arg ns)/sim/turtle2" to="$(arg ns)/turtle2" />
 
     <group ns="$(arg ns)/sim">
-        <node pkg="turtlesim" name="turtlesim" type="turtlesim_node"/>  
+        <node pkg="turtlesim" name="turtlesim" type="turtlesim_node"/>
+        <node pkg="rosservice" type="rosservice" name="spawn2" args="call spawn 5.544 5.544 0.0 'turtle2'"/>
     </group>
     
     <group ns="$(arg ns)/turtle1">    

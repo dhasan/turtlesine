@@ -9,6 +9,9 @@
 #define		POSE_Y		(1)
 #define		POSE_THETA	(2)
 
+#define		INITIAL_X	(5.544445)
+#define		INITIAL_Y	(5.544445)
+
 #define 	TIME_DT 	(1.0/1.3)
 namespace task1_pkg {
 	class TurtleSine : public nodelet::Nodelet
@@ -22,7 +25,7 @@ namespace task1_pkg {
 		ros::ServiceClient swan;
 		ros::Timer timer;
 		ros::Publisher odompub;
-
+		
 		std::vector<float> lastpose;
 
 		static void timerCallback(TurtleSine *obj,double l, double a);
@@ -32,9 +35,10 @@ namespace task1_pkg {
 		virtual void onInit();
 
 		static const std::string node_name;
-		TurtleSine(ros::NodeHandle &n, int count);
+		TurtleSine(ros::NodeHandle &n);
 		//Nodelet is using this constructor, so keeping it.....
 		TurtleSine(); 
+
 
 		TurtleSine(const TurtleSine &obj) = delete;
 		virtual ~TurtleSine() = default;

@@ -8,6 +8,7 @@
 #include "turtlesine/Odom.h"
 #include <pluginlib/class_list_macros.h>
 #include "nodelet/loader.h"
+#include <turtlesim/Kill.h>
 
 
 PLUGINLIB_EXPORT_CLASS(task1_pkg::TurtleSine, nodelet::Nodelet)
@@ -16,11 +17,13 @@ namespace task1_pkg {
 
 	const std::string TurtleSine::node_name = "turtlesine";
 
+	
+
 	TurtleSine::TurtleSine() : nh(getNodeHandle()){}
 	
-	TurtleSine::TurtleSine(ros::NodeHandle &n, int count) : nh(n), pubsine(nh.advertise<geometry_msgs::Twist>("cmd_vel", 1000)),
+	TurtleSine::TurtleSine(ros::NodeHandle &n) : nh(n), pubsine(nh.advertise<geometry_msgs::Twist>("cmd_vel", 1000)),
 		clienttelep(nh.serviceClient<turtlesim::TeleportAbsolute>("teleport_absolute")), 
-		swan(nh.serviceClient<turtlesim::Spawn>("/task1/sim/spawn")), ///
+		swan(nh.serviceClient<turtlesim::Spawn>("/task1/sim/spawn")),
 		timer(nh.createTimer(ros::Duration(TIME_DT), boost::bind(&TurtleSine::timerCallback, const_cast<TurtleSine*>(this), 4.44, 4.44))),
 		odompub(nh.advertise<turtlesine::Odom>("odompub", 1000)),
 		lastpose(3)
@@ -29,6 +32,7 @@ namespace task1_pkg {
 		
 	
 		int cnt = 10; //retrys
+		
 		
 		/*
 			Apparently params can't be float, only (str|int|double|bool|yaml), so use temporary vars, the other option is yaml with single vector parameter...
@@ -60,26 +64,6 @@ namespace task1_pkg {
 		if (cnt){
 			ROS_INFO("Turtle teleported.");
 			clienttelep.call(telep);
-			
-			
-			if (count>1){
-
-				turtlesim::Spawn swancl;
-				int i;
-				char tempname[10];
-				ros::service::waitForService("spawn", 50);
-				for(i=1;i<count;++i){
-
-				
-					swancl.request.x = 5.54444; 
-					swancl.request.y = 5.54444;
-					swancl.request.theta = 0.0;
-					sprintf(tempname, "turtle%d", i+1);
-					swancl.request.name = tempname;
-
-					swan.call(swancl);
-				}
-			}
 			
 		}
 		else{
@@ -173,7 +157,7 @@ int main(int argc, char **argv)
 #if 1
 	
 	ros::NodeHandle n("/");
-	task1_pkg::TurtleSine ts(n, 2);
+	task1_pkg::TurtleSine ts(n);
 
 #else
 	nodelet::Loader nodelet;
