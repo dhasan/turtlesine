@@ -2,117 +2,186 @@
 #include "turtlesine.h"
 #include <sstream>
 #include <geometry_msgs/Twist.h>
-#include <turtlesim/TeleportAbsolute.h> 
-
-const std::string TurtleSine::node_name = "turtlesine";
-
-TurtleSine::TurtleSine() : n("~"), pubsine(n.advertise<geometry_msgs::Twist>("cmd_vel", 1000)),
-	clienttelep(n.serviceClient<turtlesim::TeleportAbsolute>("teleport_absolute")), 
-	timer(n.createTimer(ros::Duration(1.0/1.3), boost::bind(&TurtleSine::timerCallback, const_cast<TurtleSine*>(this), 4.44, 4.44))),
-	lastpose(3){}
+#include <turtlesim/TeleportAbsolute.h>
+#include <turtlesim/Spawn.h>
+#include <tf/transform_datatypes.h>
+#include "turtlesine/Odom.h"
+#include <pluginlib/class_list_macros.h>
+#include "nodelet/loader.h"
 
 
-int TurtleSine::initialize()
-{
-	turtlesim::TeleportAbsolute telep;
-	int cnt = 500; //retrys
+PLUGINLIB_EXPORT_CLASS(task1_pkg::TurtleSine, nodelet::Nodelet)
+
+namespace task1_pkg {
+
+	const std::string TurtleSine::node_name = "turtlesine";
+
+	TurtleSine::TurtleSine() : nh(getNodeHandle()){}
 	
-	/*
-		Apparently params can't be float, only (str|int|double|bool|yaml), so use temporary vars, the other option is yaml with single vector parameter...
-	*/
-	double tx,ty,ttheta;
-	n.getParam("initial_x", tx);
-	n.getParam("initial_y", ty);
-	n.getParam("initial_theta", ttheta);
-
-	telep.request.x = (float)tx;
-	telep.request.y = (float)ty;
-	telep.request.theta = (float)ttheta;
-
-	/*
-		Since both nodes are starting at the same from launcher sometimes turtlesine node starts before
-		turtlesim_node, so we need to wait until turtlesim_node appear to use teleport service
-	*/
-	while (!clienttelep.call(telep) && cnt)
+	TurtleSine::TurtleSine(ros::NodeHandle &n, int count) : nh(n), pubsine(nh.advertise<geometry_msgs::Twist>("cmd_vel", 1000)),
+		clienttelep(nh.serviceClient<turtlesim::TeleportAbsolute>("teleport_absolute")), 
+		swan(nh.serviceClient<turtlesim::Spawn>("/task1/sim/spawn")), ///
+		timer(nh.createTimer(ros::Duration(TIME_DT), boost::bind(&TurtleSine::timerCallback, const_cast<TurtleSine*>(this), 4.44, 4.44))),
+		odompub(nh.advertise<turtlesine::Odom>("odompub", 1000)),
+		lastpose(3)
 	{
-		ROS_WARN("Wait for turtlesim_node and Teleport service server..");
-		cnt--;
-	}
-	if (cnt){
-		ROS_INFO("Turtle teleported.");
-		lastpose.at(POSE_X) = telep.request.x;  //TODO: better to use response values if available
-		lastpose.at(POSE_Y) = telep.request.y;
-		lastpose.at(POSE_THETA) = telep.request.theta;
-		return 0;
-	}
-	else{
-		ROS_ERROR("Unable to teleport the turtle.");
-		return -1;
+		turtlesim::TeleportAbsolute telep;
+		
+	
+		int cnt = 10; //retrys
+		
+		/*
+			Apparently params can't be float, only (str|int|double|bool|yaml), so use temporary vars, the other option is yaml with single vector parameter...
+		*/
+		double tx,ty,ttheta;
+		nh.getParam("turtlesine/initial_x", tx);
+		nh.getParam("turtlesine/initial_y", ty);
+		nh.getParam("turtlesine/initial_theta", ttheta);
+	
+		std::cout << "NAMESPACE : " <<ros::this_node::getNamespace()<<std::endl;
+	
+		telep.request.x = tx;
+		telep.request.y = ty;
+		telep.request.theta = ttheta;
+	
+		/*
+			Since both nodes are starting at the same from launcher sometimes turtlesine node starts before
+			turtlesim_node, so we need to wait until turtlesim_node appear to use teleport service
+		*/
+	
+		while (!ros::service::exists("teleport_absolute", true) && cnt)
+		{
+			
+			ROS_WARN("Wait for turtlesim_node and Teleport service server..");
+			ros::service::waitForService("teleport_absolute", 50);
+			--cnt;
+		}
+	
+		if (cnt){
+			ROS_INFO("Turtle teleported.");
+			clienttelep.call(telep);
+			
+			
+			if (count>1){
+
+				turtlesim::Spawn swancl;
+				int i;
+				char tempname[10];
+				ros::service::waitForService("spawn", 50);
+				for(i=1;i<count;++i){
+
+				
+					swancl.request.x = 5.54444; 
+					swancl.request.y = 5.54444;
+					swancl.request.theta = 0.0;
+					sprintf(tempname, "turtle%d", i+1);
+					swancl.request.name = tempname;
+
+					swan.call(swancl);
+				}
+			}
+			
+		}
+		else{
+			ROS_ERROR("Unable to teleport the turtle.");
+			exit(0);
+			
+		}
+	
 	}
 	
+	
+	void TurtleSine::timerCallback(TurtleSine *obj, double l, double a)
+	{
+		geometry_msgs::Twist twist;
+		static int count = 0;
+		twist.linear.x = l;
+		twist.linear.y = 0;
+		twist.linear.z = 0;
+	
+		twist.angular.x = 0;
+		twist.angular.y = 0;
+		twist.angular.z = a;
+	
+		if (!(count & 1)){
+	  		twist.angular.z *= -1;
+	  	}
+	
+	  	obj->pubsine.publish(twist);
+	
+	  	obj->poseCalculate(twist);
+	  
+		++count;
+	}
+	
+	void TurtleSine::poseCalculate(const geometry_msgs::Twist &twist){
+	
+		/* Odometry formula*/
+		turtlesine::Odom odom;
+	
+		double dt = TIME_DT; //time discrete
+		double vx = twist.linear.x;
+		double vy = twist.linear.y; 
+		double th = twist.angular.z;
+	
+		double thi = lastpose.at(POSE_THETA); //initial angle
+	
+		double delta_x = (vx * cos(thi) - vy * sin(thi)) * dt;
+		double delta_y = (vx * sin(thi) + vy * cos(thi)) * dt;
+		double delta_th = th * dt;
+	
+		lastpose.at(POSE_X) += (float)delta_x;
+		lastpose.at(POSE_Y) += (float)delta_y;
+		lastpose.at(POSE_THETA) += (float)delta_th;
+	
+		ROS_INFO("Calculated pose x y: %f %f", lastpose.at(0), lastpose.at(1));
+	
+		//q.setEuler(lastpose.at(POSE_THETA), 0, 0);
+		tf::Quaternion q = tf::createQuaternionFromRPY(0, 0, lastpose.at(POSE_THETA));
+		odom.q.x = q[0];
+		odom.q.y = q[1];
+		odom.q.z = q[2];
+		odom.q.w = q[3];
+	
+		odom.header.stamp = ros::Time::now();
+	
+		odom.p.x = lastpose.at(POSE_X);
+		odom.p.y = lastpose.at(POSE_Y);
+		odom.p.z = 0;
+	
+		odompub.publish(odom);
+	
+		
+	}
+	
+	void TurtleSine::onInit()
+	{
+		NODELET_DEBUG("Initializing nodelet...");
+		pubsine = nh.advertise<geometry_msgs::Twist>("cmd_vel", 1000);
+		clienttelep = nh.serviceClient<turtlesim::TeleportAbsolute>("teleport_absolute"); 
+		swan = nh.serviceClient<turtlesim::Spawn>("spawn"); 
+		timer = nh.createTimer(ros::Duration(TIME_DT), boost::bind(&TurtleSine::timerCallback, const_cast<TurtleSine*>(this), 4.44, 4.44));
+		odompub = nh.advertise<turtlesine::Odom>("odompub", 1000);
+		lastpose.resize(3);
+	}
+
 }
-
-void TurtleSine::timerCallback(TurtleSine *obj, double l, double a)
-{
-	geometry_msgs::Twist twist;
-	static int count = 0;
-	twist.linear.x = l;
-	twist.linear.y = 0;
-	twist.linear.z = 0;
-
-	twist.angular.x = 0;
-	twist.angular.y = 0;
-	twist.angular.z = a;
-
-	if (!(count & 1)){
-  		twist.angular.z *= -1;
-  	}
-
-  	obj->pubsine.publish(twist);
-
-  	obj->poseCalculate(twist);
-  
-	++count;
-}
-
-void TurtleSine::poseCalculate(const geometry_msgs::Twist &twist){
-
-	/* Odometry formula*/
-
-	double dt = 1.0/1.3; //time discrete
-	double vx = twist.linear.x;
-	double vy = twist.linear.y; 
-	double th = twist.angular.z;
-
-	double thi = lastpose.at(POSE_THETA); //initial angle
-
-	double delta_x = (vy * sin(thi) - vx * cos(thi)) * dt;
-	double delta_y = (vy * cos(thi) + vx * sin(thi)) * dt;
-	double delta_th = th * dt;
-
-	lastpose.at(POSE_X) += (float)delta_x;
-	lastpose.at(POSE_Y) += (float)delta_y;
-	lastpose.at(POSE_THETA) += (float)delta_th;
-
-	ROS_INFO("Calculated pose x y: %f %f", lastpose.at(0), lastpose.at(1));
-	//TODO: wall hit not taken into account
-}
-
-
 
 int main(int argc, char **argv)
 {
-	ros::init(argc, argv, TurtleSine::node_name);
+	ros::init(argc, argv, task1_pkg::TurtleSine::node_name);
+#if 1
+	
+	ros::NodeHandle n("/");
+	task1_pkg::TurtleSine ts(n, 2);
 
-	TurtleSine ts;
-
-	if (ts.initialize()){
-
-		std::cout << "Unable to teleport. Turtlesim_naode might be missing"<< std::endl;
-		exit(0);
-
-	}
-
+#else
+	nodelet::Loader nodelet;
+  	nodelet::M_string remap(ros::names::getRemappings());
+  	nodelet::V_string nargv;
+  	std::string nodelet_name = ros::this_node::getName();
+  	nodelet.load(nodelet_name, "task1_pkg/TurtleSine", remap, nargv);
+#endif
 	ros::spin();
 
 	return 0;
